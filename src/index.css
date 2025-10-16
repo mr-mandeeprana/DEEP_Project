@@ -1,0 +1,137 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    --background: 46 33% 97%;
+    --foreground: 25 25% 15%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 25 25% 15%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 25 25% 15%;
+
+    --primary: 22 78% 55%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 37 57% 94%;
+    --secondary-foreground: 25 25% 15%;
+
+    --muted: 37 57% 94%;
+    --muted-foreground: 25 25% 45%;
+
+    --accent: 37 57% 94%;
+    --accent-foreground: 25 25% 15%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 37 27% 88%;
+    --input: 37 27% 88%;
+    --ring: 22 78% 55%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 46 33% 97%;
+    --sidebar-foreground: 25 25% 25%;
+    --sidebar-primary: 22 78% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 37 57% 94%;
+    --sidebar-accent-foreground: 25 25% 15%;
+    --sidebar-border: 37 27% 88%;
+    --sidebar-ring: 22 78% 55%;
+
+    /* Gradient colors for Deep branding */
+    --gradient-start: 22 78% 55%;
+    --gradient-end: 35 91% 65%;
+    --gradient-warm: linear-gradient(135deg, hsl(var(--gradient-start)), hsl(var(--gradient-end)));
+    --gradient-hero: linear-gradient(135deg, hsl(22 78% 55%) 0%, hsl(35 91% 65%) 100%);
+    
+    /* Spiritual color palette */
+    --wisdom-blue: 220 85% 57%;
+    --peace-purple: 260 85% 65%;
+    --growth-green: 142 76% 36%;
+    --community-orange: 22 78% 55%;
+    
+    /* Soft backgrounds */
+    --verse-bg: 220 85% 97%;
+    --community-bg: 142 76% 97%;
+    --notes-bg: 260 85% 97%;
+    
+    /* Text variants */
+    --text-wisdom: 220 85% 40%;
+    --text-subtle: 25 25% 55%;
+  }
+
+  .dark {
+    --background: 25 25% 8%;
+    --foreground: 37 57% 94%;
+
+    --card: 25 25% 10%;
+    --card-foreground: 37 57% 94%;
+
+    --popover: 25 25% 10%;
+    --popover-foreground: 37 57% 94%;
+
+    --primary: 22 78% 65%;
+    --primary-foreground: 25 25% 8%;
+
+    --secondary: 25 25% 15%;
+    --secondary-foreground: 37 57% 94%;
+
+    --muted: 25 25% 15%;
+    --muted-foreground: 25 25% 65%;
+
+    --accent: 25 25% 15%;
+    --accent-foreground: 37 57% 94%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 37 57% 94%;
+
+    --border: 25 25% 15%;
+    --input: 25 25% 15%;
+    --ring: 22 78% 65%;
+
+    --sidebar-background: 25 25% 8%;
+    --sidebar-foreground: 37 57% 94%;
+    --sidebar-primary: 22 78% 65%;
+    --sidebar-primary-foreground: 25 25% 8%;
+    --sidebar-accent: 25 25% 15%;
+    --sidebar-accent-foreground: 37 57% 94%;
+    --sidebar-border: 25 25% 15%;
+    --sidebar-ring: 22 78% 65%;
+
+    --gradient-start: 22 78% 65%;
+    --gradient-end: 35 91% 75%;
+    --gradient-warm: linear-gradient(135deg, hsl(var(--gradient-start)), hsl(var(--gradient-end)));
+    --gradient-hero: linear-gradient(135deg, hsl(22 78% 65%) 0%, hsl(35 91% 75%) 100%);
+    
+    --wisdom-blue: 220 85% 67%;
+    --peace-purple: 260 85% 75%;
+    --growth-green: 142 76% 46%;
+    --community-orange: 22 78% 65%;
+    
+    --verse-bg: 220 85% 12%;
+    --community-bg: 142 76% 12%;
+    --notes-bg: 260 85% 12%;
+    
+    --text-wisdom: 220 85% 60%;
+    --text-subtle: 25 25% 75%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}

@@ -1,0 +1,11 @@
+-- Insert sample sacred texts
+INSERT INTO public.sacred_texts (title, source, chapter, content, category, tags, reads_count) VALUES 
+('On Controlling the Mind', 'Bhagavad Gita', 'Chapter 6, Verse 35', 'The mind is indeed difficult to control and is restless. But by practice and detachment it can be controlled.', 'bhagavad_gita', ARRAY['mind', 'control', 'meditation'], 235),
+('Managing Anxiety Through Breath', 'Psychology', 'Chapter Mindfulness, Verse 2', 'The breath is the bridge between body and mind. When we control our breathing, we can calm both physical tension and mental...', 'psychology', ARRAY['anxiety', 'breath', 'mindfulness'], 201),
+('The Power of Focused Action', 'Bhagavad Gita', 'Chapter 2, Verse 47', 'You have a right to perform your prescribed duty, but never to the fruits of action. Never consider yourself the cause of the results,...', 'bhagavad_gita', ARRAY['karma', 'duty', 'action'], 189),
+('The Nature of Reality', 'Bhagavad Gita', 'Chapter 7, Verse 14', 'This divine energy of Mine, consisting of the three modes of material nature, is difficult to overcome. But those who have surrendered...', 'bhagavad_gita', ARRAY['reality', 'divine', 'surrender'], 157),
+('Understanding Grief and Loss', 'Psychology', 'Chapter Bereavement, Verse 1', 'Grief is love persisting. It is the price we pay for having something precious to lose. The process of healing requires both...', 'psychology', ARRAY['grief', 'loss', 'healing'], 143),
+('The Path of Self-Realization', 'Vedas', 'Upanishad 1, Verse 3', 'The Self is not born, nor does it die. It is not produced from anyone, nor was anyone produced from it. Unborn, eternal...', 'vedas', ARRAY['self', 'realization', 'eternal'], 128),
+('Building Mental Resilience', 'Psychology', 'Chapter Resilience, Verse 5', 'Resilience is not about avoiding difficulties, but about developing the capacity to bounce back from them stronger than before...', 'psychology', ARRAY['resilience', 'strength', 'recovery'], 112),
+('The Science of Meditation', 'Puranas', 'Chapter Dhyana, Verse 12', 'In meditation, the mind becomes like a calm lake, reflecting the true nature of reality without distortion. This practice...', 'puranas', ARRAY['meditation', 'mind', 'peace'], 98)
+ON CONFLICT DO NOTHING;
