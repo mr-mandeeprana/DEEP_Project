@@ -24,13 +24,16 @@ import {
 } from 'lucide-react';
 
 interface VideoCallProps {
-  sessionId: string;
-  mentorName: string;
-  mentorAvatar: string;
-  onEndCall: () => void;
+  sessionId?: string;
+  mentorName?: string;
+  mentorAvatar?: string;
+  mentorId?: string;
+  topic?: string;
+  onEndCall?: () => void;
 }
 
-export default function VideoCall({ sessionId, mentorName, mentorAvatar, onEndCall }: VideoCallProps) {
+export default function VideoCall({ sessionId, mentorName, mentorAvatar, mentorId, topic, onEndCall }: VideoCallProps) {
+  console.log('VideoCall Debug:', { sessionId, mentorName, mentorAvatar, mentorId, topic });
   const { toast } = useToast();
   const [isMuted, setIsMuted] = useState(false);
   const [isVideoOn, setIsVideoOn] = useState(true);
@@ -105,9 +108,9 @@ export default function VideoCall({ sessionId, mentorName, mentorAvatar, onEndCa
   const endCall = () => {
     toast({
       title: "Call Ended",
-      description: `Session with ${mentorName} has ended. Duration: ${formatTime(sessionTime)}`,
+      description: `Session with ${mentorName || 'Mentor'} has ended. Duration: ${formatTime(sessionTime)}`,
     });
-    onEndCall();
+    onEndCall?.();
   };
 
   if (isMinimized) {
@@ -156,8 +159,8 @@ export default function VideoCall({ sessionId, mentorName, mentorAvatar, onEndCa
                 </AvatarFallback>
               </Avatar>
               <div>
-                <h3 className="font-semibold">{mentorName}</h3>
-                <p className="text-sm text-gray-300">Spiritual Mentorship Session</p>
+                <h3 className="font-semibold">{mentorName || 'Mentor'}</h3>
+                <p className="text-sm text-gray-300">{topic || 'Spiritual Mentorship Session'}</p>
               </div>
             </div>
             <div className="flex items-center gap-4">
@@ -189,8 +192,8 @@ export default function VideoCall({ sessionId, mentorName, mentorAvatar, onEndCa
                         {mentorAvatar}
                       </AvatarFallback>
                     </Avatar>
-                    <h2 className="text-2xl font-semibold mb-2">{mentorName}</h2>
-                    <p className="text-gray-300">Spiritual Guide & Mentor</p>
+                    <h2 className="text-2xl font-semibold mb-2">{mentorName || 'Mentor'}</h2>
+                    <p className="text-gray-300">{topic || 'Spiritual Guide & Mentor'}</p>
                   </div>
                 </div>
 

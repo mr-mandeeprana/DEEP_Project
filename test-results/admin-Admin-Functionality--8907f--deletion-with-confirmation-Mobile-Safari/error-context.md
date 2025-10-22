@@ -1,0 +1,44 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e2]:
+  - region "Notifications (F8)":
+    - list
+  - region "Notifications alt+T"
+  - generic [ref=e6]:
+    - generic [ref=e8]:
+      - heading "Deep" [level=1] [ref=e9]
+      - paragraph [ref=e10]: Your journey into ancient wisdom
+    - generic [ref=e11]:
+      - generic [ref=e12]:
+        - tablist [ref=e13]:
+          - tab "Sign In" [selected] [ref=e14] [cursor=pointer]
+          - tab "Sign Up" [ref=e15] [cursor=pointer]
+        - tabpanel "Sign In" [ref=e16]:
+          - generic [ref=e17]:
+            - generic [ref=e18]:
+              - text: Email
+              - textbox "Email" [ref=e19]:
+                - /placeholder: your@email.com
+            - generic [ref=e20]:
+              - text: Password
+              - generic [ref=e21]:
+                - textbox "Password" [ref=e22]:
+                  - /placeholder: Enter your password
+                - button [ref=e23] [cursor=pointer]:
+                  - img
+            - button "Sign In" [ref=e24] [cursor=pointer]
+            - button "Forgot your password?" [ref=e26] [cursor=pointer]:
+              - img
+              - text: Forgot your password?
+      - generic [ref=e27]:
+        - generic [ref=e32]: Or continue with
+        - generic [ref=e33]:
+          - button "Google" [ref=e34] [cursor=pointer]:
+            - img
+            - text: Google
+          - button "Facebook" [ref=e35] [cursor=pointer]:
+            - img
+            - text: Facebook
+      - paragraph [ref=e37]: By continuing, you agree to our terms of service and privacy policy.
+```

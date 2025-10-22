@@ -152,6 +152,7 @@ export default function Learning() {
 
   // Use default courses if none loaded from database
   const displayCourses = courses.length > 0 ? courses : defaultCourses;
+  console.log('Learning page - courses from API:', courses.length, 'displayCourses:', displayCourses.length, 'isLoading:', isLoading);
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');

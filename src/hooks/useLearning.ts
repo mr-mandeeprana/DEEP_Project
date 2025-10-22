@@ -53,6 +53,7 @@ export const useLearning = () => {
   // Fetch all published courses
   const fetchCourses = async (category?: string) => {
     setIsLoading(true);
+    console.log('fetchCourses called with category:', category);
     try {
       let query = supabase
         .from('courses')
@@ -64,10 +65,14 @@ export const useLearning = () => {
         query = query.eq('category', category);
       }
 
+      console.log('Executing query for courses...');
       const { data, error } = await query;
+      console.log('Query result - data length:', data?.length, 'error:', error);
+
       if (error) throw error;
 
       setCourses(data || []);
+      console.log('Courses set in state:', data?.length || 0);
     } catch (error) {
       console.error('Error fetching courses:', error);
       toast({
@@ -77,6 +82,7 @@ export const useLearning = () => {
       });
     } finally {
       setIsLoading(false);
+      console.log('fetchCourses completed, isLoading set to false');
     }
   };
 

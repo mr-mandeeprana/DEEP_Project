@@ -31,10 +31,15 @@ import {
   XCircle,
   Eye,
   Download,
-  RefreshCw
+  RefreshCw,
+  Plus,
+  Edit,
+  Trash2,
+  Search
 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
 import { format } from 'date-fns';
+import { useNavigate } from 'react-router-dom';
 
 interface Stats {
   totalUsers: number;
@@ -47,6 +52,7 @@ interface Stats {
   totalRevenue: number;
   activeUsers: number;
   pendingMentors: number;
+  totalCourses: number;
 }
 
 interface RecentActivity {
@@ -64,6 +70,23 @@ interface UserEngagement {
   revenue: number;
 }
 
+interface Course {
+  id: string;
+  title: string;
+  description: string;
+  short_description: string;
+  instructor_name: string;
+  category: string;
+  tags: string[];
+  duration_hours: number;
+  total_lessons: number;
+  difficulty_level: string;
+  status: string;
+  created_at: string;
+  enrollment_count: number;
+  rating: number;
+}
+
 export default function AdminDashboard() {
   const [stats, setStats] = useState<Stats>({
     totalUsers: 0,
@@ -76,15 +99,19 @@ export default function AdminDashboard() {
     totalRevenue: 0,
     activeUsers: 0,
     pendingMentors: 0,
+    totalCourses: 0,
   });
   const [isLoading, setIsLoading] = useState(true);
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([]);
   const [engagementData, setEngagementData] = useState<UserEngagement[]>([]);
+  const [courses, setCourses] = useState<Course[]>([]);
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchStats();
     fetchRecentActivity();
     fetchEngagementData();
+    fetchCourses();
   }, []);
 
   const fetchStats = async () => {
@@ -98,38 +125,56 @@ export default function AdminDashboard() {
         sessionsResult,
         revenueResult,
         activeUsersResult,
-        pendingMentorsResult
+        pendingMentorsResult,
+        coursesResult
       ] = await Promise.all([
         supabase.from('profiles').select('*', { count: 'exact', head: true }),
         supabase.from('sacred_texts').select('*', { count: 'exact', head: true }),
         supabase.from('community_posts').select('*', { count: 'exact', head: true }),
         supabase.from('post_comments').select('*', { count: 'exact', head: true }),
-        supabase.from('profiles').select('*').eq('role', 'mentor'),
-        supabase.from('mentorship_sessions').select('*'),
+        supabase.from('mentors').select('*', { count: 'exact', head: true }),
+        supabase.from('sessions').select('*', { count: 'exact', head: true }),
         supabase.from('payments').select('amount'),
         supabase.from('profiles').select('*').gt('last_seen', new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()),
-        supabase.from('mentor_applications').select('*').eq('status', 'pending')
+        supabase.from('mentor_applications').select('*').eq('status', 'pending'),
+        supabase.from('courses').select('*', { count: 'exact', head: true })
       ]);
 
       const totalRevenue = revenueResult.data?.reduce((sum, payment) => sum + (payment.amount || 0), 0) || 0;
-      const totalLearners = (usersResult.count || 0) - mentorsResult.data?.length;
+      const totalLearners = (usersResult.count || 0) - (mentorsResult.count || 0);
 
       setStats({
         totalUsers: usersResult.count || 0,
         totalTexts: textsResult.count || 0,
         totalPosts: postsResult.count || 0,
         totalComments: commentsResult.count || 0,
-        totalMentors: mentorsResult.data?.length || 0,
+        totalMentors: mentorsResult.count || 0,
         totalLearners: totalLearners > 0 ? totalLearners : 0,
-        totalSessions: sessionsResult.data?.length || 0,
+        totalSessions: sessionsResult.count || 0,
         totalRevenue,
         activeUsers: activeUsersResult.data?.length || 0,
         pendingMentors: pendingMentorsResult.data?.length || 0,
+        totalCourses: coursesResult.count || 0,
       });
     } catch (error) {
       console.error('Error fetching stats:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchCourses = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('courses')
+        .select('*')
+        .order('created_at', { ascending: false })
+        .limit(10);
+
+      if (error) throw error;
+      setCourses(data || []);
+    } catch (error) {
+      console.error('Error fetching courses:', error);
     }
   };
 
@@ -225,6 +270,14 @@ export default function AdminDashboard() {
       color: 'text-orange-600',
       bgColor: 'bg-orange-50',
       trend: null
+    },
+    {
+      title: 'Total Courses',
+      value: stats.totalCourses,
+      icon: BookOpen,
+      color: 'text-indigo-600',
+      bgColor: 'bg-indigo-50',
+      trend: '+12%'
     }
   ];
 
@@ -263,7 +316,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {statCards.map((stat) => (
           <Card key={stat.title} className="relative overflow-hidden border-0 bg-gradient-to-br from-white to-gray-50 shadow-lg hover:shadow-xl transition-all duration-300">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-3">
@@ -294,7 +347,7 @@ export default function AdminDashboard() {
       </div>
 
       <Tabs defaultValue="overview" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="overview" className="gap-2">
             <BarChart3 className="w-4 h-4" />
             Overview
@@ -302,6 +355,10 @@ export default function AdminDashboard() {
           <TabsTrigger value="analytics" className="gap-2">
             <PieChart className="w-4 h-4" />
             Analytics
+          </TabsTrigger>
+          <TabsTrigger value="courses" className="gap-2">
+            <BookOpen className="w-4 h-4" />
+            Courses
           </TabsTrigger>
           <TabsTrigger value="activity" className="gap-2">
             <Activity className="w-4 h-4" />
@@ -316,7 +373,7 @@ export default function AdminDashboard() {
         <TabsContent value="overview" className="space-y-6">
           {/* Quick Actions */}
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card className="p-4 hover:shadow-md transition-shadow cursor-pointer border-l-4 border-l-blue-500">
+            <Card className="p-4 hover:shadow-md transition-shadow cursor-pointer border-l-4 border-l-blue-500" onClick={() => navigate('/admin/users')}>
               <div className="flex items-center gap-3">
                 <Users className="w-8 h-8 text-blue-600" />
                 <div>
@@ -325,7 +382,7 @@ export default function AdminDashboard() {
                 </div>
               </div>
             </Card>
-            <Card className="p-4 hover:shadow-md transition-shadow cursor-pointer border-l-4 border-l-green-500">
+            <Card className="p-4 hover:shadow-md transition-shadow cursor-pointer border-l-4 border-l-green-500" onClick={() => navigate('/admin/texts')}>
               <div className="flex items-center gap-3">
                 <FileText className="w-8 h-8 text-green-600" />
                 <div>
@@ -334,7 +391,7 @@ export default function AdminDashboard() {
                 </div>
               </div>
             </Card>
-            <Card className="p-4 hover:shadow-md transition-shadow cursor-pointer border-l-4 border-l-purple-500">
+            <Card className="p-4 hover:shadow-md transition-shadow cursor-pointer border-l-4 border-l-purple-500" onClick={() => navigate('/admin/mentorship')}>
               <div className="flex items-center gap-3">
                 <Award className="w-8 h-8 text-purple-600" />
                 <div>
@@ -343,12 +400,12 @@ export default function AdminDashboard() {
                 </div>
               </div>
             </Card>
-            <Card className="p-4 hover:shadow-md transition-shadow cursor-pointer border-l-4 border-l-orange-500">
+            <Card className="p-4 hover:shadow-md transition-shadow cursor-pointer border-l-4 border-l-orange-500" onClick={() => navigate('/admin/courses')}>
               <div className="flex items-center gap-3">
-                <BarChart3 className="w-8 h-8 text-orange-600" />
+                <BookOpen className="w-8 h-8 text-orange-600" />
                 <div>
-                  <p className="font-semibold">Analytics</p>
-                  <p className="text-sm text-muted-foreground">View detailed reports</p>
+                  <p className="font-semibold">Course Management</p>
+                  <p className="text-sm text-muted-foreground">Manage learning courses</p>
                 </div>
               </div>
             </Card>
@@ -543,6 +600,135 @@ export default function AdminDashboard() {
           </div>
         </TabsContent>
 
+        <TabsContent value="courses" className="space-y-6">
+          {/* Course Management Quick Access */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <BookOpen className="w-5 h-5" />
+                Course Management Overview
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                <div className="p-4 border rounded-lg hover:shadow-md transition-shadow cursor-pointer" onClick={() => navigate('/admin/courses')}>
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-100 rounded-lg">
+                      <BookOpen className="w-5 h-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="font-semibold">Total Courses</p>
+                      <p className="text-2xl font-bold">{courses.length}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-4 border rounded-lg hover:shadow-md transition-shadow cursor-pointer">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-green-100 rounded-lg">
+                      <Eye className="w-5 h-5 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="font-semibold">Published</p>
+                      <p className="text-2xl font-bold text-green-600">
+                        {courses.filter(c => c.status === 'published').length}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-4 border rounded-lg hover:shadow-md transition-shadow cursor-pointer">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-yellow-100 rounded-lg">
+                      <Edit className="w-5 h-5 text-yellow-600" />
+                    </div>
+                    <div>
+                      <p className="font-semibold">Drafts</p>
+                      <p className="text-2xl font-bold text-yellow-600">
+                        {courses.filter(c => c.status === 'draft').length}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-4 border rounded-lg hover:shadow-md transition-shadow cursor-pointer">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-purple-100 rounded-lg">
+                      <Users className="w-5 h-5 text-purple-600" />
+                    </div>
+                    <div>
+                      <p className="font-semibold">Enrollments</p>
+                      <p className="text-2xl font-bold text-purple-600">
+                        {courses.reduce((sum, c) => sum + c.enrollment_count, 0)}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-6 flex gap-4">
+                <Button className="gap-2" onClick={() => navigate('/admin/courses')}>
+                  <Plus className="w-4 h-4" />
+                  Create New Course
+                </Button>
+                <Button variant="outline" className="gap-2" onClick={() => navigate('/admin/courses')}>
+                  <BookOpen className="w-4 h-4" />
+                  Manage Courses
+                </Button>
+                <Button variant="outline" className="gap-2">
+                  <BarChart3 className="w-4 h-4" />
+                  Course Analytics
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Recent Courses */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Clock className="w-5 h-5" />
+                Recent Courses
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-3">
+                {courses.slice(0, 5).map((course) => (
+                  <div key={course.id} className="flex items-center justify-between p-3 border rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-gradient-to-r from-blue-500 to-purple-500 rounded-lg flex items-center justify-center">
+                        <BookOpen className="w-5 h-5 text-white" />
+                      </div>
+                      <div>
+                        <p className="font-medium">{course.title}</p>
+                        <p className="text-sm text-muted-foreground">by {course.instructor_name}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge variant={course.status === 'published' ? 'default' : 'secondary'}>
+                        {course.status}
+                      </Badge>
+                      <Button size="sm" variant="outline" onClick={() => navigate(`/admin/courses`)}>
+                        <Edit className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+                {courses.length === 0 && (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <BookOpen className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                    <p>No courses created yet</p>
+                    <Button className="mt-4 gap-2" onClick={() => navigate('/admin/courses')}>
+                      <Plus className="w-4 h-4" />
+                      Create Your First Course
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="activity" className="space-y-6">
           {/* Audit Logs Preview */}
           <Card>
@@ -559,7 +745,8 @@ export default function AdminDashboard() {
                   { action: 'Session Booked', user: 'jane.smith@example.com', timestamp: '15 minutes ago', ip: '192.168.1.2' },
                   { action: 'Content Approved', user: 'admin@wisdom.com', timestamp: '1 hour ago', ip: '192.168.1.3' },
                   { action: 'Mentor Verified', user: 'admin@wisdom.com', timestamp: '2 hours ago', ip: '192.168.1.3' },
-                  { action: 'Payment Processed', user: 'system@wisdom.com', timestamp: '3 hours ago', ip: '192.168.1.4' }
+                  { action: 'Payment Processed', user: 'system@wisdom.com', timestamp: '3 hours ago', ip: '192.168.1.4' },
+                  { action: 'Course Created', user: 'admin@wisdom.com', timestamp: '4 hours ago', ip: '192.168.1.3' }
                 ].map((log, index) => (
                   <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
                     <div className="flex items-center gap-3">
@@ -600,7 +787,8 @@ export default function AdminDashboard() {
                 {[
                   { type: 'Post', content: 'Inappropriate content reported', author: 'user123', priority: 'High' },
                   { type: 'Comment', content: 'Spam comment detected', author: 'user456', priority: 'Medium' },
-                  { type: 'Profile', content: 'Suspicious profile activity', author: 'user789', priority: 'Low' }
+                  { type: 'Profile', content: 'Suspicious profile activity', author: 'user789', priority: 'Low' },
+                  { type: 'Course', content: 'Course content review needed', author: 'instructor001', priority: 'Medium' }
                 ].map((item, index) => (
                   <div key={index} className="flex items-center justify-between p-4 border rounded-lg">
                     <div className="flex items-center gap-3">

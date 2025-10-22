@@ -18,14 +18,14 @@ import {
 import { format } from 'date-fns';
 
 interface FeedbackPageProps {
-  sessionId: string;
-  mentorId: string;
-  mentorName: string;
-  mentorAvatar: string;
-  sessionDate: Date;
-  sessionTopic: string;
-  onFeedbackSubmitted: (rating: number, feedback: string) => void;
-  onCancel: () => void;
+  sessionId?: string;
+  mentorId?: string;
+  mentorName?: string;
+  mentorAvatar?: string;
+  sessionDate?: Date;
+  sessionTopic?: string;
+  onFeedbackSubmitted?: (rating: number, feedback: string) => void;
+  onCancel?: () => void;
 }
 
 export default function FeedbackPage({
@@ -44,6 +44,8 @@ export default function FeedbackPage({
   const [feedback, setFeedback] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  console.log('Feedback Debug:', { sessionId, mentorId, mentorName, mentorAvatar, sessionDate, sessionTopic });
+
   const handleSubmitFeedback = async () => {
     if (rating === 0) {
       toast({
@@ -59,7 +61,7 @@ export default function FeedbackPage({
     // Simulate API call
     setTimeout(() => {
       setIsSubmitting(false);
-      onFeedbackSubmitted(rating, feedback);
+      onFeedbackSubmitted?.(rating, feedback);
       toast({
         title: "Feedback Submitted!",
         description: `Thank you for your feedback on the session with ${mentorName}.`,
@@ -110,14 +112,14 @@ export default function FeedbackPage({
                   </AvatarFallback>
                 </Avatar>
                 <div className="flex-1">
-                  <h3 className="font-semibold">{mentorName}</h3>
+                  <h3 className="font-semibold">{mentorName || 'Mentor'}</h3>
                   <p className="text-sm text-muted-foreground">Mentorship Session</p>
                   <div className="flex items-center gap-4 mt-1">
                     <div className="flex items-center gap-1 text-sm">
                       <Calendar className="w-4 h-4" />
-                      {format(sessionDate, 'PPP')}
+                      {sessionDate ? format(sessionDate, 'PPP') : 'Date not available'}
                     </div>
-                    <Badge variant="secondary">{sessionTopic}</Badge>
+                    <Badge variant="secondary">{sessionTopic || 'General Session'}</Badge>
                   </div>
                 </div>
               </div>

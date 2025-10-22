@@ -11,6 +11,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { useAuth } from '@/hooks/useAuth';
+import { useMentorship } from '@/hooks/useMentorship';
+import { useRealtime } from '@/hooks/useRealtime';
 import {
   Users,
   Calendar as CalendarIcon,
@@ -30,109 +33,6 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 
-// Mock data for mentors
-const mentors = [
-  {
-    id: '1',
-    name: 'Dr. Maya Patel',
-    title: 'Clinical Psychologist & Mindfulness Expert',
-    avatar: 'MP',
-    specialties: ['Mindfulness', 'Anxiety', 'Meditation', 'Therapy'],
-    rating: 4.9,
-    totalSessions: 450,
-    hourlyRate: 120,
-    languages: ['English', 'Hindi'],
-    experience: '8 years',
-    bio: 'Specializing in mindfulness-based therapy and helping individuals achieve mental wellness through ancient wisdom and modern psychology.',
-    availability: {
-      monday: ['09:00', '10:00', '14:00', '15:00'],
-      tuesday: ['10:00', '11:00', '16:00'],
-      wednesday: ['09:00', '13:00', '15:00'],
-      thursday: ['11:00', '14:00', '16:00'],
-      friday: ['10:00', '15:00']
-    },
-    isOnline: true,
-    verified: true
-  },
-  {
-    id: '2',
-    name: 'Swami Ravi Shankar',
-    title: 'Yoga Philosophy & Spiritual Guide',
-    avatar: 'RS',
-    specialties: ['Yoga Philosophy', 'Meditation', 'Spiritual Growth', 'Sanskrit'],
-    rating: 4.8,
-    totalSessions: 380,
-    hourlyRate: 100,
-    languages: ['English', 'Sanskrit', 'Hindi'],
-    experience: '12 years',
-    bio: 'Dedicated to sharing the wisdom of ancient yogic traditions and guiding seekers on their spiritual journey.',
-    availability: {
-      monday: ['08:00', '12:00', '17:00'],
-      tuesday: ['09:00', '14:00'],
-      wednesday: ['08:00', '11:00', '16:00'],
-      thursday: ['10:00', '15:00'],
-      friday: ['09:00', '13:00']
-    },
-    isOnline: true,
-    verified: true
-  },
-  {
-    id: '3',
-    name: 'Dr. Arjun Sharma',
-    title: 'Bhagavad Gita Scholar & Life Coach',
-    avatar: 'AS',
-    specialties: ['Bhagavad Gita', 'Leadership', 'Ethics', 'Life Coaching'],
-    rating: 4.7,
-    totalSessions: 320,
-    hourlyRate: 110,
-    languages: ['English', 'Hindi', 'Sanskrit'],
-    experience: '10 years',
-    bio: 'Bringing the timeless wisdom of the Bhagavad Gita to modern leadership and personal development challenges.',
-    availability: {
-      monday: ['13:00', '16:00'],
-      tuesday: ['11:00', '14:00', '17:00'],
-      wednesday: ['10:00', '15:00'],
-      thursday: ['09:00', '12:00', '16:00'],
-      friday: ['11:00', '14:00']
-    },
-    isOnline: false,
-    verified: true
-  }
-];
-
-// Mock data for sessions
-const mockSessions = [
-  {
-    id: '1',
-    mentorId: '1',
-    learnerId: 'user123',
-    mentorName: 'Dr. Maya Patel',
-    learnerName: 'John Doe',
-    date: new Date('2024-12-20T14:00:00'),
-    duration: 60,
-    topic: 'Mindfulness for Stress Management',
-    status: 'completed',
-    price: 120,
-    rating: 5,
-    feedback: 'Excellent session! Very insightful and practical.',
-    notes: 'Learned breathing techniques and meditation practices.'
-  },
-  {
-    id: '2',
-    mentorId: '2',
-    learnerId: 'user123',
-    mentorName: 'Swami Ravi Shankar',
-    learnerName: 'John Doe',
-    date: new Date('2024-12-22T10:00:00'),
-    duration: 90,
-    topic: 'Introduction to Yoga Philosophy',
-    status: 'scheduled',
-    price: 150,
-    rating: null,
-    feedback: null,
-    notes: null
-  }
-];
 
 const timeSlots = [
   '08:00', '09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00',
@@ -140,6 +40,32 @@ const timeSlots = [
 ];
 
 export default function Mentorship() {
+  const { user } = useAuth();
+  const { mentors, sessions, bookings, isLoading, getMentorAvailability, createBooking, manageSession, confirmBooking } = useMentorship();
+  const { toast } = useToast();
+
+  // Diagnostic logs
+  console.log('Mentorship Page Debug:');
+  console.log('User:', user);
+  console.log('Mentors from hook:', mentors?.length || 0, 'items');
+  console.log('Sessions from hook:', sessions?.length || 0, 'items');
+  console.log('Bookings from hook:', bookings?.length || 0, 'items');
+  console.log('IsLoading:', isLoading);
+  console.log('First mentor sample:', mentors?.[0]);
+  console.log('First session sample:', sessions?.[0]);
+
+  // Set up real-time updates
+  useRealtime({
+    onSessionUpdate: (payload) => {
+      console.log('Session update:', payload);
+      // Refetch sessions when there are changes
+      // The useMentorship hook will handle this via its useEffect
+    },
+    onBookingUpdate: (payload) => {
+      console.log('Booking update:', payload);
+      // Refetch bookings when there are changes
+    }
+  });
   const [activeTab, setActiveTab] = useState('browse');
   const [selectedMentor, setSelectedMentor] = useState<any>(null);
   const [selectedDate, setSelectedDate] = useState<Date>();
@@ -147,90 +73,26 @@ export default function Mentorship() {
   const [bookingTopic, setBookingTopic] = useState('');
   const [bookingDuration, setBookingDuration] = useState('60');
   const [showBookingDialog, setShowBookingDialog] = useState(false);
-  const [sessions, setSessions] = useState(mockSessions);
-  const { toast } = useToast();
+  const [availableTimes, setAvailableTimes] = useState<string[]>([]);
 
-  const handleBookSession = (mentor: any) => {
-    setSelectedMentor(mentor);
-    setShowBookingDialog(true);
-  };
-
-  const handleConfirmBooking = () => {
-    if (!selectedDate || !selectedTime || !bookingTopic) {
-      toast({
-        title: "Missing Information",
-        description: "Please fill in all required fields.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    const sessionTime = new Date(selectedDate);
-    const [hours, minutes] = selectedTime.split(':');
-    sessionTime.setHours(parseInt(hours), parseInt(minutes));
-
-    const sessionPrice = selectedMentor.hourlyRate * (parseInt(bookingDuration) / 60);
-
-    // Instead of direct booking, redirect to payment
-    setShowBookingDialog(false);
-
-    // Create a temporary session object for payment
-    const tempSession = {
-      id: Date.now().toString(),
-      mentorId: selectedMentor.id,
-      learnerId: 'user123',
-      mentorName: selectedMentor.name,
-      learnerName: 'John Doe',
-      date: sessionTime,
-      duration: parseInt(bookingDuration),
-      topic: bookingTopic,
-      status: 'payment_pending',
-      price: sessionPrice,
-      rating: null,
-      feedback: null,
-      notes: null
+  // Load available times when mentor and date are selected
+  useEffect(() => {
+    const loadAvailableTimes = async () => {
+      if (selectedMentor && selectedDate) {
+        const dateString = selectedDate.toISOString().split('T')[0];
+        const result = await getMentorAvailability(selectedMentor.id, dateString);
+        setAvailableTimes(result.availableTimes || []);
+      } else {
+        setAvailableTimes([]);
+      }
     };
 
-    // Open payment page
-    window.open(`/payment?session=${encodeURIComponent(JSON.stringify(tempSession))}`, '_blank');
-  };
-
-  const handlePaymentSuccess = (sessionData: any) => {
-    const newSession = {
-      ...sessionData,
-      status: 'scheduled'
-    };
-
-    setSessions(prev => [...prev, newSession]);
-    setSelectedMentor(null);
-
-    // Close payment window if it exists
-    if (window.opener) {
-      window.opener.focus();
-      window.close();
-    }
-  };
-
-  const getAvailableTimes = (mentor: any, date: Date) => {
-    if (!date) return [];
-
-    const dayName = format(date, 'EEEE').toLowerCase();
-    const availableTimes = mentor.availability[dayName] || [];
-
-    // Filter out times that are already booked
-    const bookedTimes = sessions
-      .filter(session =>
-        session.mentorId === mentor.id &&
-        format(session.date, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd') &&
-        session.status !== 'cancelled'
-      )
-      .map(session => format(session.date, 'HH:mm'));
-
-    return availableTimes.filter((time: string) => !bookedTimes.includes(time));
-  };
+    loadAvailableTimes();
+  }, [selectedMentor, selectedDate, getMentorAvailability]);
 
   const getMentorStats = (mentorId: string) => {
-    const mentorSessions = sessions.filter(s => s.mentorId === mentorId && s.status === 'completed');
+    const mentorSessions = sessions.filter(s => s.mentor_id === mentorId && s.status === 'completed');
+    console.log('Mentor stats for', mentorId, ':', mentorSessions);
     const avgRating = mentorSessions.length > 0
       ? mentorSessions.reduce((sum, s) => sum + (s.rating || 0), 0) / mentorSessions.length
       : 0;
@@ -241,8 +103,10 @@ export default function Mentorship() {
     };
   };
 
-  const upcomingSessions = sessions.filter(s => s.status === 'scheduled' && s.date > new Date());
+  const upcomingSessions = sessions.filter(s => s.status === 'scheduled' && new Date(s.date) > new Date());
   const completedSessions = sessions.filter(s => s.status === 'completed');
+
+  console.log('Filtered sessions - Upcoming:', upcomingSessions.length, 'Completed:', completedSessions.length);
 
   return (
     <div className="h-full overflow-auto">
@@ -295,7 +159,7 @@ export default function Mentorship() {
                             {mentor.avatar}
                           </AvatarFallback>
                         </Avatar>
-                        {mentor.isOnline && (
+                        {mentor.is_online && (
                           <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-green-500 border-2 border-white rounded-full"></div>
                         )}
                       </div>
@@ -308,8 +172,8 @@ export default function Mentorship() {
                             <span className="text-sm font-medium">{mentor.rating}</span>
                           </div>
                           <span className="text-xs text-muted-foreground">
-                            ({mentor.totalSessions} sessions)
-                          </span>
+                              ({mentor.total_sessions} sessions)
+                            </span>
                           {mentor.verified && (
                             <Badge variant="secondary" className="text-xs">
                               <Award className="w-3 h-3 mr-1" />
@@ -335,7 +199,7 @@ export default function Mentorship() {
 
                     <div className="flex items-center justify-between mb-4">
                       <div>
-                        <p className="text-lg font-semibold">${mentor.hourlyRate}/hr</p>
+                        <p className="text-lg font-semibold">${mentor.hourly_rate}/hr</p>
                         <p className="text-xs text-muted-foreground">{mentor.experience} experience</p>
                       </div>
                       <div className="text-right">
@@ -346,7 +210,14 @@ export default function Mentorship() {
 
                     <div className="flex gap-2">
                       <Button
-                        onClick={() => handleBookSession(mentor)}
+                        onClick={() => {
+                          const handleBookSession = (mentor: any) => {
+                            console.log('Booking session with mentor:', mentor);
+                            setSelectedMentor(mentor);
+                            setShowBookingDialog(true);
+                          };
+                          handleBookSession(mentor);
+                        }}
                         className="flex-1 bg-gradient-hero hover:opacity-90"
                       >
                         <CalendarIcon className="w-4 h-4 mr-2" />
@@ -377,11 +248,11 @@ export default function Mentorship() {
                             <div className="flex items-center gap-4">
                               <Avatar className="w-12 h-12">
                                 <AvatarFallback>
-                                  {mentors.find(m => m.id === session.mentorId)?.avatar}
+                                  {mentors.find(m => m.id === session.mentor_id)?.avatar}
                                 </AvatarFallback>
                               </Avatar>
                               <div>
-                                <h4 className="font-semibold">{session.mentorName}</h4>
+                                <h4 className="font-semibold">{session.mentor_name}</h4>
                                 <p className="text-sm text-muted-foreground">{session.topic}</p>
                                 <div className="flex items-center gap-4 mt-2">
                                   <div className="flex items-center gap-1">
@@ -405,13 +276,15 @@ export default function Mentorship() {
                                 </Badge>
                               </div>
                               <Button
-                                onClick={() => {
-                                  // Update session status to in_progress
-                                  setSessions(prev => prev.map(s =>
-                                    s.id === session.id ? { ...s, status: 'in_progress' } : s
-                                  ));
-                                  // Open video call
-                                  window.open('/video-call', '_blank');
+                                onClick={async () => {
+                                  // Start the session
+                                  await manageSession({
+                                    action: 'start',
+                                    sessionId: session.id
+                                  });
+                                  // Open video call with session data
+                                  const videoCallUrl = `/video-call?session=${session.id}&mentor=${session.mentor_id}&topic=${encodeURIComponent(session.topic)}`;
+                                  window.open(videoCallUrl, '_blank');
                                 }}
                                 disabled={new Date(session.date) > new Date()}
                               >
@@ -452,11 +325,11 @@ export default function Mentorship() {
                             <div className="flex items-center gap-4">
                               <Avatar className="w-12 h-12">
                                 <AvatarFallback>
-                                  {mentors.find(m => m.id === session.mentorId)?.avatar}
+                                  {mentors.find(m => m.id === session.mentor_id)?.avatar}
                                 </AvatarFallback>
                               </Avatar>
                               <div>
-                                <h4 className="font-semibold">{session.mentorName}</h4>
+                                <h4 className="font-semibold">{session.mentor_name}</h4>
                                 <p className="text-sm text-muted-foreground">{session.topic}</p>
                                 <div className="flex items-center gap-4 mt-2">
                                   <div className="flex items-center gap-1">
@@ -489,8 +362,9 @@ export default function Mentorship() {
                                   variant="outline"
                                   size="sm"
                                   onClick={() => {
-                                    // Open feedback dialog
-                                    window.open(`/feedback?session=${session.id}`, '_blank');
+                                    // Open feedback dialog with session data
+                                    const feedbackUrl = `/feedback?session=${session.id}&mentor=${session.mentor_id}&topic=${encodeURIComponent(session.topic)}`;
+                                    window.open(feedbackUrl, '_blank');
                                   }}
                                 >
                                   Leave Review
@@ -755,7 +629,7 @@ export default function Mentorship() {
                             <span className="text-sm font-medium">{mentor.rating}</span>
                           </div>
                           <span className="text-xs text-muted-foreground">
-                            {mentor.totalSessions} sessions
+                            {mentor.total_sessions} sessions
                           </span>
                         </div>
                       </div>
@@ -785,7 +659,7 @@ export default function Mentorship() {
                             <div>
                               <p className="font-medium">{session.topic}</p>
                               <p className="text-sm text-muted-foreground">
-                                {session.mentorName} • {format(session.date, 'MMM dd, yyyy')}
+                                {session.mentor_name} • {format(session.date, 'MMM dd, yyyy')}
                               </p>
                             </div>
                           </div>
@@ -842,7 +716,7 @@ export default function Mentorship() {
                 <Label className="text-base font-medium mb-3 block">Available Times</Label>
                 {selectedDate ? (
                   <div className="grid grid-cols-2 gap-2">
-                    {getAvailableTimes(selectedMentor, selectedDate).map((time) => (
+                    {availableTimes.map((time: string) => (
                       <Button
                         key={time}
                         variant={selectedTime === time ? "default" : "outline"}
@@ -877,9 +751,9 @@ export default function Mentorship() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="30">30 minutes - ${Math.round(selectedMentor?.hourlyRate * 0.5)}</SelectItem>
-                    <SelectItem value="60">60 minutes - ${selectedMentor?.hourlyRate}</SelectItem>
-                    <SelectItem value="90">90 minutes - ${Math.round(selectedMentor?.hourlyRate * 1.5)}</SelectItem>
+                    <SelectItem value="30">30 minutes - ${Math.round(selectedMentor?.hourly_rate * 0.5)}</SelectItem>
+                    <SelectItem value="60">60 minutes - ${selectedMentor?.hourly_rate}</SelectItem>
+                    <SelectItem value="90">90 minutes - ${Math.round(selectedMentor?.hourly_rate * 1.5)}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -889,14 +763,56 @@ export default function Mentorship() {
               <div className="flex justify-between items-center">
                 <span className="font-medium">Total Cost:</span>
                 <span className="text-xl font-bold">
-                  ${selectedMentor ? Math.round(selectedMentor.hourlyRate * (parseInt(bookingDuration) / 60)) : 0}
+                  ${selectedMentor ? Math.round(selectedMentor.hourly_rate * (parseInt(bookingDuration) / 60)) : 0}
                 </span>
               </div>
             </div>
 
             <div className="flex gap-3">
               <Button
-                onClick={handleConfirmBooking}
+                onClick={() => {
+                  const handleConfirmBooking = async () => {
+                    if (!selectedMentor || !selectedDate || !selectedTime || !bookingTopic) {
+                      toast({
+                        title: "Missing Information",
+                        description: "Please fill in all required fields",
+                        variant: "destructive",
+                      });
+                      return;
+                    }
+
+                    try {
+                      const bookingData = {
+                        mentorId: selectedMentor.id,
+                        date: selectedDate.toISOString().split('T')[0] + 'T' + selectedTime + ':00',
+                        duration: parseInt(bookingDuration),
+                        topic: bookingTopic,
+                      };
+
+                      console.log('Creating booking with data:', bookingData);
+                      const result = await createBooking(bookingData);
+
+                      if (result) {
+                        toast({
+                          title: "Success",
+                          description: "Session booked successfully!",
+                        });
+                        setShowBookingDialog(false);
+                        setSelectedDate(undefined);
+                        setSelectedTime('');
+                        setBookingTopic('');
+                      }
+                    } catch (error) {
+                      console.error('Booking error:', error);
+                      toast({
+                        title: "Booking Failed",
+                        description: "Unable to book session. Please try again.",
+                        variant: "destructive",
+                      });
+                    }
+                  };
+                  handleConfirmBooking();
+                }}
                 className="flex-1 bg-gradient-hero hover:opacity-90"
                 disabled={!selectedDate || !selectedTime || !bookingTopic}
               >

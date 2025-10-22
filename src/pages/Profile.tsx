@@ -6,8 +6,9 @@ import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogTrigger } from '@/components/ui/dialog';
-import { Card } from '@/components/ui/card';
-import { Loader2, Grid3x3, Bookmark, Heart, MessageCircle, Send, Share2, Trophy, Target, Gift, Trash2 } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { Loader2, Grid3x3, Bookmark, Heart, MessageCircle, Send, Share2, Trophy, Target, Gift, Trash2, Plus } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
 import { formatDistanceToNow } from 'date-fns';
 import EditProfileDialog from '@/components/EditProfileDialog';
@@ -21,6 +22,7 @@ import { Leaderboard } from '@/components/Leaderboard';
 import { ProgressTracker } from '@/components/ProgressTracker';
 import { RewardSystem } from '@/components/RewardSystem';
 import { StreakCounter } from '@/components/StreakCounter';
+import { useStories } from '@/hooks/useStories';
 
 const PostInteractionButtons = ({ postId, onDelete }: { postId: string; onDelete?: () => void }) => {
   const { isLiked, likesCount, toggleLike, loading: likeLoading, deletePost } = usePostLikes(postId);
@@ -300,6 +302,35 @@ export default function Profile() {
   const [savedPosts, setSavedPosts] = useState<Post[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
+  const [stories, setStories] = useState<any[]>([]);
+  const [selectedStoryIndex, setSelectedStoryIndex] = useState(0);
+  const [isStoryViewerOpen, setIsStoryViewerOpen] = useState(false);
+  const [currentStoryProgress, setCurrentStoryProgress] = useState(0);
+  const [isStoryPaused, setIsStoryPaused] = useState(false);
+
+  // Auto-advance stories
+  useEffect(() => {
+    if (!isStoryViewerOpen || isStoryPaused) return;
+
+    const interval = setInterval(() => {
+      setCurrentStoryProgress(prev => {
+        if (prev >= 100) {
+          // Move to next story or close viewer
+          const nextIndex = selectedStoryIndex + 1;
+          if (nextIndex < stories.length) {
+            setSelectedStoryIndex(nextIndex);
+            return 0;
+          } else {
+            setIsStoryViewerOpen(false);
+            return 0;
+          }
+        }
+        return prev + 2; // Progress per interval
+      });
+    }, 100);
+
+    return () => clearInterval(interval);
+  }, [isStoryViewerOpen, selectedStoryIndex, stories.length, isStoryPaused]);
 
   const isOwnProfile = user?.id === userId;
 
@@ -307,6 +338,7 @@ export default function Profile() {
     if (userId) {
       fetchProfile();
       fetchPosts();
+      fetchStories();
       if (isOwnProfile) {
         fetchSavedPosts();
       }
@@ -352,7 +384,7 @@ export default function Profile() {
 
   const fetchSavedPosts = async () => {
     if (!user) return;
-    
+
     try {
       const { data, error } = await supabase
         .from('saved_posts')
@@ -373,14 +405,30 @@ export default function Profile() {
         .order('created_at', { ascending: false });
 
       if (error) throw error;
-      
+
       const formattedPosts = (data || [])
         .map(item => item.community_posts)
         .filter(Boolean) as Post[];
-      
+
       setSavedPosts(formattedPosts);
     } catch (error) {
       console.error('Error fetching saved posts:', error);
+    }
+  };
+
+  const fetchStories = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('user_stories')
+        .select('*')
+        .eq('user_id', userId)
+        .gt('expires_at', new Date().toISOString())
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setStories(data || []);
+    } catch (error) {
+      console.error('Error fetching stories:', error);
     }
   };
 
@@ -416,7 +464,61 @@ export default function Profile() {
     <div className="min-h-screen bg-background overflow-y-auto">
       {/* Profile Header */}
       <div className="max-w-4xl mx-auto px-4 py-4 md:py-8">
-        <div className="flex flex-col sm:flex-row gap-4 md:gap-8 items-center sm:items-start mb-6 md:mb-8">
+      {/* Stories Section */}
+      <div className="flex gap-4 mb-6 md:mb-8 overflow-x-auto pb-2">
+        {/* Add Story */}
+        {isOwnProfile && (
+          <Card className="flex-shrink-0 w-16 h-16 md:w-20 md:h-20 cursor-pointer group">
+            <CardContent className="p-1 h-full flex flex-col items-center justify-center relative">
+              <div className="w-14 h-14 md:w-18 md:h-18 bg-muted rounded-full flex items-center justify-center mb-1 group-hover:bg-accent transition-colors">
+                <Plus className="w-5 h-5 md:w-6 md:h-6 text-muted-foreground" />
+              </div>
+              <p className="text-xs text-center text-muted-foreground truncate w-full">Add Story</p>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* User Stories */}
+        {stories.length > 0 && (
+          <Card
+            className="flex-shrink-0 w-16 h-16 md:w-20 md:h-20 cursor-pointer group"
+            onClick={() => {
+              setSelectedStoryIndex(0);
+              setCurrentStoryProgress(0);
+              setIsStoryViewerOpen(true);
+            }}
+          >
+            <CardContent className="p-1 h-full flex flex-col items-center justify-center relative">
+              {/* Story Ring */}
+              <div className="absolute inset-0 rounded-full p-0.5">
+                <div className="w-full h-full bg-gradient-to-tr from-orange-400 via-pink-500 to-purple-600 rounded-full p-0.5">
+                  <div className="w-full h-full bg-background rounded-full flex items-center justify-center">
+                    <Avatar className="w-12 h-12 md:w-16 md:h-16">
+                      <AvatarImage src={profile?.avatar_url || ''} />
+                      <AvatarFallback className="bg-gradient-hero text-white text-xs md:text-sm">
+                        {profile?.display_name?.[0]?.toUpperCase() || profile?.username?.[0]?.toUpperCase() || 'U'}
+                      </AvatarFallback>
+                    </Avatar>
+                  </div>
+                </div>
+              </div>
+
+              {/* Story Indicator */}
+              <div className="absolute -top-1 -right-1 w-4 h-4 md:w-5 md:h-5 bg-primary rounded-full flex items-center justify-center">
+                <span className="text-xs text-primary-foreground font-bold">
+                  {stories.length}
+                </span>
+              </div>
+
+              <p className="text-xs text-center mt-14 md:mt-18 truncate w-full">
+                Your story
+              </p>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      <div className="flex flex-col sm:flex-row gap-4 md:gap-8 items-center sm:items-start mb-6 md:mb-8">
           {/* Avatar */}
           <Avatar className="h-24 w-24 sm:h-32 sm:w-32 md:h-40 md:w-40 shrink-0">
             <AvatarImage src={profile.avatar_url || ''} />
@@ -490,6 +592,113 @@ export default function Profile() {
             )}
           </div>
         </div>
+
+        {/* Story Viewer Modal */}
+        <Dialog open={isStoryViewerOpen} onOpenChange={setIsStoryViewerOpen}>
+          <DialogContent className="max-w-md h-[600px] p-0 bg-black border-0">
+            {stories[selectedStoryIndex] && (
+              <div
+                className="relative w-full h-full"
+                onMouseEnter={() => setIsStoryPaused(true)}
+                onMouseLeave={() => setIsStoryPaused(false)}
+              >
+                {/* Progress Bar */}
+                <div className="absolute top-4 left-4 right-4 z-10">
+                  <Progress value={currentStoryProgress} className="h-1" />
+                </div>
+
+                {/* Close Button */}
+                <button
+                  onClick={() => setIsStoryViewerOpen(false)}
+                  className="absolute top-4 right-4 z-10 text-white hover:bg-white/20 rounded-full p-1"
+                >
+                  <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+
+                {/* Story Content */}
+                <div className="w-full h-full flex items-center justify-center">
+                  {stories[selectedStoryIndex].media_type === 'image' ? (
+                    <img
+                      src={stories[selectedStoryIndex].media_url}
+                      alt="Story"
+                      className="max-w-full max-h-full object-contain"
+                    />
+                  ) : (
+                    <video
+                      src={stories[selectedStoryIndex].media_url}
+                      className="max-w-full max-h-full object-contain"
+                      autoPlay
+                      muted
+                    />
+                  )}
+                </div>
+
+                {/* Caption */}
+                {stories[selectedStoryIndex].caption && (
+                  <div className="absolute bottom-20 left-4 right-4 bg-black/50 text-white p-3 rounded-lg">
+                    <p className="text-sm">{stories[selectedStoryIndex].caption}</p>
+                  </div>
+                )}
+
+                {/* User Info & Actions */}
+                <div className="absolute bottom-4 left-4 right-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Avatar className="w-8 h-8">
+                      <AvatarImage src={profile?.avatar_url || ''} />
+                      <AvatarFallback className="bg-gradient-hero text-white text-xs">
+                        {profile?.display_name?.[0]?.toUpperCase() || 'U'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <p className="text-white text-sm font-semibold">
+                        {profile?.display_name || profile?.username}
+                      </p>
+                      <p className="text-white/70 text-xs">
+                        {formatDistanceToNow(new Date(stories[selectedStoryIndex].created_at), { addSuffix: true })}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="secondary" className="bg-white/20 hover:bg-white/30">
+                      <Heart className="w-4 h-4 text-white" />
+                    </Button>
+                    <Button size="sm" variant="secondary" className="bg-white/20 hover:bg-white/30">
+                      <MessageCircle className="w-4 h-4 text-white" />
+                    </Button>
+                    <Button size="sm" variant="secondary" className="bg-white/20 hover:bg-white/30">
+                      <Send className="w-4 h-4 text-white" />
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Navigation Areas */}
+                <div
+                  className="absolute left-0 top-0 w-1/3 h-full cursor-pointer"
+                  onClick={() => {
+                    if (selectedStoryIndex > 0) {
+                      setSelectedStoryIndex(selectedStoryIndex - 1);
+                      setCurrentStoryProgress(0);
+                    }
+                  }}
+                />
+                <div
+                  className="absolute right-0 top-0 w-1/3 h-full cursor-pointer"
+                  onClick={() => {
+                    if (selectedStoryIndex < stories.length - 1) {
+                      setSelectedStoryIndex(selectedStoryIndex + 1);
+                      setCurrentStoryProgress(0);
+                    } else {
+                      setIsStoryViewerOpen(false);
+                    }
+                  }}
+                />
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
 
         {/* Tabs */}
         <Tabs defaultValue="posts" className="w-full">

@@ -3,7 +3,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { MessageCircle, Heart, Plus, Users, TrendingUp, Bookmark, Trash2, Loader2, RefreshCw, Rss, Search, Filter } from "lucide-react";
+import { MessageCircle, Heart, Plus, Users, TrendingUp, Bookmark, Trash2, Loader2, RefreshCw, Rss, Search, Filter, Share2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
@@ -37,6 +37,99 @@ const getPostTypeColor = (type: string) => {
     reflection: "bg-green-100 text-green-700"
   };
   return colors[type.toLowerCase() as keyof typeof colors] || "bg-gray-100 text-gray-700";
+};
+
+const ShareButton = ({ post }: { post: CommunityPost }) => {
+  const { toast } = useToast();
+  const [isSharing, setIsSharing] = useState(false);
+
+  const handleShare = async () => {
+    setIsSharing(true);
+    try {
+      const shareData = {
+        title: post.title,
+        text: post.content.length > 100 ? post.content.substring(0, 100) + '...' : post.content,
+        url: `${window.location.origin}/community?post=${post.id}`
+      };
+
+      // Check if Web Share API is supported
+      if (navigator.share) {
+        await navigator.share(shareData);
+        toast({
+          title: "Shared successfully",
+          description: "Post shared via native sharing.",
+        });
+      } else {
+        // Fallback: Copy link to clipboard
+        await navigator.clipboard.writeText(shareData.url);
+        toast({
+          title: "Link copied",
+          description: "Post link copied to clipboard.",
+        });
+      }
+    } catch (error) {
+      console.error('Error sharing:', error);
+      // Fallback options
+      const fallbackOptions = [
+        {
+          name: 'Copy Link',
+          action: async () => {
+            try {
+              await navigator.clipboard.writeText(`${window.location.origin}/community?post=${post.id}`);
+              toast({
+                title: "Link copied",
+                description: "Post link copied to clipboard.",
+              });
+            } catch (clipboardError) {
+              toast({
+                title: "Error",
+                description: "Failed to copy link. Please try again.",
+                variant: "destructive",
+              });
+            }
+          }
+        },
+        {
+          name: 'Share via Email',
+          action: () => {
+            const subject = encodeURIComponent(post.title);
+            const body = encodeURIComponent(`${post.content.length > 100 ? post.content.substring(0, 100) + '...' : post.content}\n\nRead more: ${window.location.origin}/community?post=${post.id}`);
+            window.open(`mailto:?subject=${subject}&body=${body}`);
+          }
+        }
+      ];
+
+      // Show fallback options using a simple alert for now (could be improved with a modal)
+      const choice = window.confirm(
+        "Native sharing not available. Choose an option:\n1. Copy Link\n2. Share via Email\n\nClick OK for Copy Link, Cancel for Email"
+      );
+      if (choice) {
+        await fallbackOptions[0].action();
+      } else {
+        fallbackOptions[1].action();
+      }
+    } finally {
+      setIsSharing(false);
+    }
+  };
+
+  return (
+    <button
+      className={`flex items-center gap-1 sm:gap-1.5 lg:gap-2 transition-colors touch-manipulation min-h-[40px] sm:min-h-[44px] px-1.5 sm:px-2 py-1 rounded ${
+        isSharing ? 'text-blue-500' : 'text-muted-foreground hover:text-blue-500'
+      }`}
+      onClick={handleShare}
+      disabled={isSharing}
+      title="Share this post"
+    >
+      {isSharing ? (
+        <Loader2 className="w-4 h-4 animate-spin" />
+      ) : (
+        <Share2 className="w-4 h-4" />
+      )}
+      <span className="text-xs sm:text-sm font-medium hidden xs:inline">Share</span>
+    </button>
+  );
 };
 
 const PostInteractions = ({ post, onDelete }: { post: CommunityPost; onDelete?: () => void }) => {
@@ -80,10 +173,10 @@ const PostInteractions = ({ post, onDelete }: { post: CommunityPost; onDelete?: 
           )}
           <span className="text-xs sm:text-sm font-medium">{likesCount}</span>
         </button>
-        <button className="flex items-center gap-1 sm:gap-1.5 lg:gap-2 text-muted-foreground hover:text-primary transition-colors touch-manipulation min-h-[40px] sm:min-h-[44px] px-1.5 sm:px-2 py-1 rounded">
+        <Link to={`/community?post=${post.id}#comments`} className="flex items-center gap-1 sm:gap-1.5 lg:gap-2 text-muted-foreground hover:text-primary transition-colors touch-manipulation min-h-[40px] sm:min-h-[44px] px-1.5 sm:px-2 py-1 rounded">
           <MessageCircle className="w-4 h-4" />
           <span className="text-xs sm:text-sm font-medium">{post.comments_count}</span>
-        </button>
+        </Link>
         <button
           className={`flex items-center gap-1 sm:gap-1.5 lg:gap-2 transition-colors touch-manipulation min-h-[40px] sm:min-h-[44px] px-1.5 sm:px-2 py-1 rounded ${
             isSaved ? 'text-primary' : 'text-muted-foreground hover:text-primary'
@@ -99,6 +192,7 @@ const PostInteractions = ({ post, onDelete }: { post: CommunityPost; onDelete?: 
           <span className="text-xs sm:text-sm font-medium hidden xs:inline">{isSaved ? 'Saved' : 'Save'}</span>
           <span className="text-xs sm:text-sm font-medium xs:hidden">{isSaved ? '✓' : 'Save'}</span>
         </button>
+        <ShareButton post={post} />
         {user && post.user_id === user.id && (
           <button
             className="flex items-center gap-1 sm:gap-1.5 lg:gap-2 text-muted-foreground hover:text-red-500 transition-colors touch-manipulation min-h-[40px] sm:min-h-[44px] px-1.5 sm:px-2 py-1 rounded"
@@ -411,6 +505,12 @@ export default function CommunityFeed() {
                       setPosts(prev => prev.filter(p => p.id !== post.id));
                       fetchPosts();
                     }} />
+
+                    {/* Comments Section */}
+                    <CommentsSection
+                      postId={post.id}
+                      initialCommentsCount={post.comments_count}
+                    />
                   </div>
                 </div>
               </CardContent>

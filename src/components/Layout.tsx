@@ -22,7 +22,6 @@ import {
   Compass,
   Bell,
   User,
-  Camera,
   GraduationCap,
   Rss,
   Shield
@@ -43,7 +42,6 @@ const navigationItems = [
   { href: "/learning", icon: GraduationCap, label: "Learning" },
   { href: "/mentorship", icon: Users, label: "Mentorship" },
   { href: "/daily-wisdom", icon: Sun, label: "Daily Wisdom" },
-  { href: "/stories", icon: Camera, label: "Stories" },
   { href: "/explore", icon: Compass, label: "Explore" },
   { href: "/search", icon: Search, label: "Search" },
   { href: "/communityfeed", icon: Rss, label: "Community Feed" },

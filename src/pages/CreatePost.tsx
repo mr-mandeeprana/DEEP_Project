@@ -44,7 +44,7 @@ export default function CreatePost() {
     { value: 'thought', label: 'Thought', description: 'Share your wisdom or reflection' },
     { value: 'question', label: 'Question', description: 'Ask for guidance or advice' },
     { value: 'experience', label: 'Experience', description: 'Share your personal journey' },
-    { value: 'quote', label: 'Quote', description: 'Share an inspiring quote' }
+    { value: 'reflection', label: 'Quote/Reflection', description: 'Share an inspiring quote or reflection' }
   ];
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -118,7 +118,7 @@ export default function CreatePost() {
       const fileName = `${user?.id}/${Date.now()}.${fileExt}`;
 
       const { data, error } = await supabase.storage
-        .from('post-media')
+        .from('uploads')
         .upload(fileName, mediaFile.file);
 
       if (error) {
@@ -126,7 +126,7 @@ export default function CreatePost() {
       }
 
       const { data: { publicUrl } } = supabase.storage
-        .from('post-media')
+        .from('uploads')
         .getPublicUrl(fileName);
 
       uploadedUrls.push(publicUrl);

@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
@@ -44,6 +43,8 @@ interface Course {
   price_cents: number;
   status: string;
   created_at: string;
+  prerequisites?: string[];
+  learning_objectives?: string[];
 }
 
 export default function AdminCourses() {
@@ -67,7 +68,9 @@ export default function AdminCourses() {
     difficulty_level: 'beginner' as 'beginner' | 'intermediate' | 'advanced',
     is_free: true,
     price_cents: 0,
-    status: 'draft'
+    status: 'draft',
+    prerequisites: '',
+    learning_objectives: ''
   });
 
   useEffect(() => {
@@ -80,7 +83,8 @@ export default function AdminCourses() {
       const { data, error } = await supabase
         .from('courses')
         .select('*')
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false })
+        .limit(100);
 
       if (error) throw error;
       setCourses(data || []);
@@ -98,22 +102,37 @@ export default function AdminCourses() {
 
   const filteredCourses = courses.filter(course => {
     const matchesSearch = course.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         course.description.toLowerCase().includes(searchQuery.toLowerCase());
+                          course.description.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = selectedStatus === 'all' || course.status === selectedStatus;
     return matchesSearch && matchesStatus;
   });
 
   const handleCreateCourse = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log('Creating course with formData:', formData);
+
     try {
       const courseData = {
-        ...formData,
-        tags: formData.tags.split(',').map(tag => tag.trim()),
+        title: formData.title,
+        description: formData.description,
+        short_description: formData.short_description,
+        instructor_name: formData.instructor_name,
+        category: formData.category,
+        tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0),
+        duration_hours: formData.duration_hours,
+        total_lessons: formData.total_lessons,
+        difficulty_level: formData.difficulty_level,
+        is_free: formData.is_free,
+        price_cents: formData.price_cents,
+        status: formData.status,
         rating: 0,
         review_count: 0,
         enrollment_count: 0,
-        instructor_id: null, // Set instructor_id to null since it's optional
+        prerequisites: formData.prerequisites.split(',').map(p => p.trim()).filter(p => p.length > 0),
+        learning_objectives: formData.learning_objectives.split(',').map(o => o.trim()).filter(o => o.length > 0),
       };
+
+      console.log('Submitting courseData to Supabase:', courseData);
 
       const { data, error } = await supabase
         .from('courses')
@@ -121,7 +140,13 @@ export default function AdminCourses() {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        console.error('Full error details:', JSON.stringify(error, null, 2));
+        throw error;
+      }
+
+      console.log('Course created successfully:', data);
 
       setCourses(prev => [data, ...prev]);
       setIsCreateDialogOpen(false);
@@ -130,11 +155,12 @@ export default function AdminCourses() {
         title: 'Success',
         description: 'Course created successfully',
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating course:', error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
       toast({
         title: 'Error',
-        description: 'Failed to create course',
+        description: error.message || 'Failed to create course',
         variant: 'destructive',
       });
     }
@@ -146,9 +172,20 @@ export default function AdminCourses() {
 
     try {
       const updateData = {
-        ...formData,
-        tags: formData.tags.split(',').map(tag => tag.trim()),
-        instructor_id: null, // Set instructor_id to null since it's optional
+        title: formData.title,
+        description: formData.description,
+        short_description: formData.short_description,
+        instructor_name: formData.instructor_name,
+        category: formData.category,
+        tags: formData.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0),
+        duration_hours: formData.duration_hours,
+        total_lessons: formData.total_lessons,
+        difficulty_level: formData.difficulty_level,
+        is_free: formData.is_free,
+        price_cents: formData.price_cents,
+        status: formData.status,
+        prerequisites: formData.prerequisites.split(',').map(p => p.trim()).filter(p => p.length > 0),
+        learning_objectives: formData.learning_objectives.split(',').map(o => o.trim()).filter(o => o.length > 0),
       };
 
       const { data, error } = await supabase
@@ -158,7 +195,11 @@ export default function AdminCourses() {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        console.error('Full error details:', JSON.stringify(error, null, 2));
+        throw error;
+      }
 
       setCourses(prev => prev.map(course =>
         course.id === selectedCourse.id ? data : course
@@ -169,11 +210,12 @@ export default function AdminCourses() {
         title: 'Success',
         description: 'Course updated successfully',
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating course:', error);
+      console.error('Error details:', JSON.stringify(error, null, 2));
       toast({
         title: 'Error',
-        description: 'Failed to update course',
+        description: error.message || 'Failed to update course',
         variant: 'destructive',
       });
     }
@@ -195,11 +237,11 @@ export default function AdminCourses() {
         title: 'Success',
         description: 'Course deleted successfully',
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error deleting course:', error);
       toast({
         title: 'Error',
-        description: 'Failed to delete course',
+        description: error.message || 'Failed to delete course',
         variant: 'destructive',
       });
     }
@@ -223,11 +265,11 @@ export default function AdminCourses() {
         title: 'Success',
         description: `Course ${newStatus === 'published' ? 'published' : 'unpublished'} successfully`,
       });
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating course status:', error);
       toast({
         title: 'Error',
-        description: 'Failed to update course status',
+        description: error.message || 'Failed to update course status',
         variant: 'destructive',
       });
     }
@@ -246,7 +288,9 @@ export default function AdminCourses() {
       difficulty_level: 'beginner',
       is_free: true,
       price_cents: 0,
-      status: 'draft'
+      status: 'draft',
+      prerequisites: '',
+      learning_objectives: ''
     });
   };
 
@@ -258,13 +302,15 @@ export default function AdminCourses() {
       short_description: course.short_description,
       instructor_name: course.instructor_name,
       category: course.category,
-      tags: course.tags.join(', '),
+      tags: course.tags?.join(', ') || '',
       duration_hours: course.duration_hours,
       total_lessons: course.total_lessons,
       difficulty_level: course.difficulty_level,
       is_free: course.is_free,
       price_cents: course.price_cents,
-      status: course.status
+      status: course.status,
+      prerequisites: course.prerequisites?.join(', ') || '',
+      learning_objectives: course.learning_objectives?.join(', ') || ''
     });
     setIsEditDialogOpen(true);
   };
@@ -572,6 +618,26 @@ function CourseForm({ formData, setFormData, onSubmit, submitLabel, onCancel }: 
         </div>
       </div>
 
+      <div className="space-y-2">
+        <Label htmlFor="prerequisites">Prerequisites (comma-separated)</Label>
+        <Textarea
+          id="prerequisites"
+          value={formData.prerequisites}
+          onChange={(e) => setFormData({ ...formData, prerequisites: e.target.value })}
+          placeholder="Basic knowledge of HTML, Understanding of JavaScript fundamentals"
+        />
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="learning_objectives">Learning Objectives (comma-separated)</Label>
+        <Textarea
+          id="learning_objectives"
+          value={formData.learning_objectives}
+          onChange={(e) => setFormData({ ...formData, learning_objectives: e.target.value })}
+          placeholder="Master advanced React patterns, Build scalable web applications"
+        />
+      </div>
+
       <div className="grid grid-cols-4 gap-4">
         <div className="space-y-2">
           <Label htmlFor="duration_hours">Duration (hours)</Label>
@@ -579,7 +645,7 @@ function CourseForm({ formData, setFormData, onSubmit, submitLabel, onCancel }: 
             id="duration_hours"
             type="number"
             value={formData.duration_hours}
-            onChange={(e) => setFormData({ ...formData, duration_hours: parseInt(e.target.value) })}
+            onChange={(e) => setFormData({ ...formData, duration_hours: parseInt(e.target.value) || 0 })}
             required
           />
         </div>
@@ -589,7 +655,7 @@ function CourseForm({ formData, setFormData, onSubmit, submitLabel, onCancel }: 
             id="total_lessons"
             type="number"
             value={formData.total_lessons}
-            onChange={(e) => setFormData({ ...formData, total_lessons: parseInt(e.target.value) })}
+            onChange={(e) => setFormData({ ...formData, total_lessons: parseInt(e.target.value) || 0 })}
             required
           />
         </div>
@@ -643,7 +709,7 @@ function CourseForm({ formData, setFormData, onSubmit, submitLabel, onCancel }: 
             id="price_cents"
             type="number"
             value={formData.price_cents}
-            onChange={(e) => setFormData({ ...formData, price_cents: parseInt(e.target.value) })}
+            onChange={(e) => setFormData({ ...formData, price_cents: parseInt(e.target.value) || 0 })}
             required
           />
         </div>

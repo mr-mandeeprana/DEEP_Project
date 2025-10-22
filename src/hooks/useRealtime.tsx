@@ -10,6 +10,8 @@ interface RealtimeCallbacks {
   onLikeUpdate?: (payload: RealtimePostgresChangesPayload<any>) => void;
   onFollowUpdate?: (payload: RealtimePostgresChangesPayload<any>) => void;
   onMessageUpdate?: (payload: RealtimePostgresChangesPayload<any>) => void;
+  onSessionUpdate?: (payload: RealtimePostgresChangesPayload<any>) => void;
+  onBookingUpdate?: (payload: RealtimePostgresChangesPayload<any>) => void;
 }
 
 export function useRealtime(callbacks: RealtimeCallbacks = {}) {
@@ -116,6 +118,46 @@ export function useRealtime(callbacks: RealtimeCallbacks = {}) {
       .subscribe();
 
     channels.push(messagesChannel);
+
+    // Sessions realtime updates
+    const sessionsChannel = supabase
+      .channel('sessions-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'sessions',
+          filter: `mentor_id=eq.${user.id}`,
+        },
+        (payload) => {
+          console.log('Session change:', payload);
+          callbacks.onSessionUpdate?.(payload);
+        }
+      )
+      .subscribe();
+
+    channels.push(sessionsChannel);
+
+    // Bookings realtime updates
+    const bookingsChannel = supabase
+      .channel('bookings-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'bookings',
+          filter: `learner_id=eq.${user.id}`,
+        },
+        (payload) => {
+          console.log('Booking change:', payload);
+          callbacks.onBookingUpdate?.(payload);
+        }
+      )
+      .subscribe();
+
+    channels.push(bookingsChannel);
 
     // Profile updates for followed users
     const profileChannel = supabase

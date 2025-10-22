@@ -22,7 +22,7 @@ import {
 } from '@/components/ui/dialog';
 import { Search, Plus, Pencil, Trash2 } from 'lucide-react';
 import { Skeleton } from '@/components/ui/skeleton';
-import { toast } from '@/hooks/use-toast';
+import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 
 interface SacredText {
@@ -51,6 +51,7 @@ export default function AdminSacredTexts() {
     chapter: '',
     tags: '',
   });
+  const { toast } = useToast();
 
   useEffect(() => {
     fetchTexts();
@@ -103,6 +104,10 @@ export default function AdminSacredTexts() {
   };
 
   const handleSave = async () => {
+    console.log('Admin Sacred Texts Debug:');
+    console.log('Form data:', formData);
+    console.log('Editing text:', editingText);
+
     try {
       const tagsArray = formData.tags
         .split(',')
@@ -119,21 +124,28 @@ export default function AdminSacredTexts() {
         reads_count: editingText?.reads_count || 0, // Include reads_count for insert
       };
 
+      console.log('Prepared text data:', textData);
+
+      let result;
       if (editingText) {
-        const { error } = await supabase
+        console.log('Updating existing text with ID:', editingText.id);
+        result = await supabase
           .from('sacred_texts')
           .update(textData)
           .eq('id', editingText.id);
 
-        if (error) throw error;
+        console.log('Update result:', result);
+        if (result.error) throw result.error;
         toast({
           title: 'Success',
           description: 'Sacred text updated successfully',
         });
       } else {
-        const { error } = await supabase.from('sacred_texts').insert([textData]);
+        console.log('Inserting new text');
+        result = await supabase.from('sacred_texts').insert([textData]);
 
-        if (error) throw error;
+        console.log('Insert result:', result);
+        if (result.error) throw result.error;
         toast({
           title: 'Success',
           description: 'Sacred text created successfully',
@@ -142,11 +154,17 @@ export default function AdminSacredTexts() {
 
       fetchTexts();
       setIsDialogOpen(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error saving text:', error);
+      console.error('Error details:', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code
+      });
       toast({
         title: 'Error',
-        description: 'Failed to save sacred text',
+        description: `Failed to save sacred text: ${error.message || 'Unknown error'}`,
         variant: 'destructive',
       });
     }

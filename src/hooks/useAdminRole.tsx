@@ -19,7 +19,7 @@ export const useAdminRole = () => {
       setRole(null);
       setIsLoading(false);
     }
-  }, [user]);
+  }, [user?.id]); // Changed from [user] to [user?.id] to prevent infinite re-renders
 
   const checkAdminRole = async () => {
     if (!user) return;
@@ -27,14 +27,14 @@ export const useAdminRole = () => {
     try {
       // First check if this is the designated admin email
       if (user.email === ADMIN_EMAIL) {
-        // Ensure the admin role exists in the database
-        await ensureAdminRole(user.id);
+        console.log('Designated admin email detected, setting superadmin role');
         setRole('superadmin');
         setIsLoading(false);
         return;
       }
 
-      // Check for assigned admin role in database
+      // Check for assigned admin role in database using the new safe function
+      console.log('Checking database for admin role for user:', user.id);
       const { data, error } = await supabase
         .from('user_roles')
         .select('role')
@@ -44,11 +44,14 @@ export const useAdminRole = () => {
       if (error) {
         if (error.code === 'PGRST116') {
           // No role found
+          console.log('No admin role found for user');
           setRole(null);
         } else {
           console.error('Error checking admin role:', error);
+          setRole(null);
         }
       } else {
+        console.log('Admin role found:', data?.role);
         setRole(data?.role as AdminRole);
       }
     } catch (error) {
@@ -60,32 +63,10 @@ export const useAdminRole = () => {
   };
 
   const ensureAdminRole = async (userId: string) => {
-    try {
-      // Check if admin role already exists
-      const { data: existingRole } = await supabase
-        .from('user_roles')
-        .select('id')
-        .eq('user_id', userId)
-        .single();
-
-      if (!existingRole) {
-        // Create superadmin role for the designated admin email
-        const { error } = await supabase
-          .from('user_roles')
-          .insert([{
-            user_id: userId,
-            role: 'superadmin'
-          }]);
-
-        if (error) {
-          console.error('Error creating admin role:', error);
-        } else {
-          console.log('Admin role created for designated admin email');
-        }
-      }
-    } catch (error) {
-      console.error('Error ensuring admin role:', error);
-    }
+    // Note: Admin roles should be pre-created in the database or created by existing superadmins
+    // This function now only checks if the role exists, but doesn't create it from client-side
+    // to avoid RLS policy conflicts
+    console.log('Admin role check for user:', userId, '- Role should be pre-created in database');
   };
 
   const hasRole = (requiredRole: 'superadmin' | 'admin' | 'moderator' | 'viewer') => {
